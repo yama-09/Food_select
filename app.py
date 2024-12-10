@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
+import chardet
 
 # ページ設定
-st.set_page_config(page_title="Excelカラム選択デモ", page_icon="📊", layout="wide")
+st.set_page_config(page_title="食品登録 デモ", page_icon="🍴", layout="wide")
 
 # CSSスタイルでカードのデザインを定義
 st.markdown("""
@@ -21,11 +22,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # タイトル
-st.markdown("<h1 style='text-align: center;'>Excel 食材選択デモ</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>食品登録 デモ</h1>", unsafe_allow_html=True)
 
-# Excelファイルのアップロード
-st.markdown("### Excelファイルをアップロードしてください")
-uploaded_file = st.file_uploader("Excelファイルを選択", type=["xlsx", "xls"])
+# ファイルのアップロード
+st.markdown("### ExcelまたはCSVファイルをアップロードしてください")
+uploaded_file = st.file_uploader("対応ファイル: .xlsx, .xls, .csv", type=["xlsx", "xls", "csv"])
 
 # セッションステートを初期化
 if "selected_data" not in st.session_state:
@@ -33,11 +34,22 @@ if "selected_data" not in st.session_state:
 
 if uploaded_file:
     try:
-        # ExcelファイルをDataFrameとして読み込む
-        df = pd.read_excel(uploaded_file)
+        # ファイルの種類によって読み込み処理を変更
+        if uploaded_file.name.endswith((".xlsx", ".xls")):
+            df = pd.read_excel(uploaded_file)
+        elif uploaded_file.name.endswith(".csv"):
+            # エンコーディングを自動検出
+            raw_data = uploaded_file.getvalue()
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+
+            # 検出されたエンコーディングでCSVを読み込む
+            df = pd.read_csv(uploaded_file, encoding=encoding)
+        else:
+            st.error("対応していないファイル形式です。ExcelまたはCSVファイルをアップロードしてください。")
         
         # カラムの選択セクション
-        st.markdown("### Excel内の情報を選択してください")
+        st.markdown("### カラムを選択してください")
         column_list = df.columns.tolist()
         selected_column = st.selectbox("カラム名", column_list)
         
@@ -47,7 +59,8 @@ if uploaded_file:
         
         # 選択されたデータの表示
         if st.session_state.selected_data is not None:
-            st.markdown(f"### 選択された情報: **{selected_column}**")
+            st.markdown(f"## 選択されたカラム: **{selected_column}**")
+            st.markdown("### 重複を除いた値:")
 
             # カード形式でデータを表示
             for value in st.session_state.selected_data:
